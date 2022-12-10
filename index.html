@@ -1,24 +1,85 @@
-<div>
-    <input id="imageInput" type="file"/>
-</div>
-<div>Remaining iteration: <span id="iterationCount"></span>
-</div>
-<div>
+<html>
+<head>
+    <title>Trianglify</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1f1f1f">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            display: grid;
+            height: 100%;
+            background-color: #1f1f1f;
+            color: #B0B9C5;
+            font-size: 1.2em;
+        }
+
+        button, input {
+            padding: 0.5em;
+            background-color: #1f1f1f;
+            color: #B0B9C5;
+            font-size: 1em;
+            border: 1px #B0B9C5 solid;
+            border-radius: 3px;
+        }
+
+        input[type=number] {
+            width: 5em;
+            padding: 0.1em;
+            text-align: right;
+        }
+
+        label {
+            display: inline-block;
+            width: 12em;
+        }
+
+        .center-fit {
+            max-width: 100%;
+            max-height: 100vh;
+            margin: auto;
+        }
+
+        .tools {
+            margin: 1em;
+        }
+
+        .tools div {
+            margin: 0.5em;
+        }
+
+        .tools div p {
+            margin: 0.1em;
+        }
+
+    </style>
+</head>
+<body>
+<div class="tools">
     <div>
-        Display original picture: <input id="displayOriginalPicture" type="checkbox"/>
-        Random color: <input id="randomColor" type="checkbox"/>
-        <br/>
-        Triangle size min: <input id="triangleSizeMin" type="number" value="200"/>
-        Triangle size max: <input id="triangleSizeMax" type="number" value="200"/>
+        <input type="file" id="imageInput" style="display: none;"/>
+        <button onclick="document.getElementById('imageInput').click();">Choose file</button>
+        <p><label>Display original picture:</label><input id="displayOriginalPicture" type="checkbox"/></p>
+        <p><label>Random color:</label><input id="randomColor" type="checkbox"/></p>
+        <p><label>Triangle size min:</label><input id="triangleSizeMin" type="number" value="200"/></p>
+        <p><label>Triangle size max:</label><input id="triangleSizeMax" type="number" value="200"/></p>
+        <p><label>Iteration number:</label><input type="number" id="iteration" value="1000" step="100"/></p>
     </div>
-    <input type="number" id="iteration" value="1000" step="100"/>
-    <button id="addIterations">Add iterations</button>
-    <button id="stopIterations">Stop iterations</button>
+    <div>
+        <p>Remaining iteration: <span id="iterationCount">0</span></p>
+        <p>
+            <button id="addIterations">Add iterations</button>
+            <button id="stopIterations">Stop iterations</button>
+        </p>
+    </div>
 </div>
 <div>
-    <canvas id="source" style="display: none">
+    <canvas class="center-fit" id="source" style="display: none">
     </canvas>
-    <canvas id="destination">
+    <canvas class="center-fit" id="destination" style="display: block">
     </canvas>
 </div>
 
@@ -217,7 +278,7 @@
                 const maxWidth = 1000;
                 const maxHeight = 600;
 
-                if (maxWidth/maxHeight < sourceWidth / sourceHeight) {
+                if (maxWidth / maxHeight < sourceWidth / sourceHeight) {
                     width = maxWidth;
                     height = Math.round(sourceHeight * width / sourceWidth);
                 } else {
@@ -231,12 +292,8 @@
                 document.getElementById('destination').height = height;
 
                 contextDestination.imageSmoothingEnabled = false;
-                contextDestination.fillStyle = 'rgba(255,255,255,1)';
-                contextDestination.fillRect(0, 0, width, height);
 
                 contextSource.imageSmoothingEnabled = false;
-                contextSource.fillStyle = 'rgba(255,255,255,1)';
-                contextSource.fillRect(0, 0, width, height);
 
                 contextSource.drawImage(sourceImage, 0, 0, width, height);
                 imageDataSource = contextSource.getImageData(0, 0, width, height);
@@ -272,3 +329,5 @@
         triangleSizeMax = this.value;
     }
 </script>
+</body>
+</html>
