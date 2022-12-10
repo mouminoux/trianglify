@@ -5,16 +5,18 @@
 </div>
 <div>
     <div>
+        Display original picture: <input id="displayOriginalPicture" type="checkbox"/>
         Random color: <input id="randomColor" type="checkbox"/>
         <br/>
-        Triangle size min: <input id="triangleSizeMin" type="number" value="5"/>
-        Triangle size max: <input id="triangleSizeMax" type="number" value="100"/>
+        Triangle size min: <input id="triangleSizeMin" type="number" value="200"/>
+        Triangle size max: <input id="triangleSizeMax" type="number" value="200"/>
     </div>
     <input type="number" id="iteration" value="1000" step="100"/>
     <button id="addIterations">Add iterations</button>
+    <button id="stopIterations">Stop iterations</button>
 </div>
 <div>
-    <canvas id="source">
+    <canvas id="source" style="display: none">
     </canvas>
     <canvas id="destination">
     </canvas>
@@ -22,6 +24,7 @@
 
 <script>
     let startingTime;
+    let stopIteration = false;
     let randomColor = false;
     let triangleSizeMin = 5;
     let triangleSizeMax = 100;
@@ -122,6 +125,10 @@
 
 
     function draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration) {
+        if (stopIteration) {
+            stopIteration = false;
+            return;
+        }
         for (let i = 0; i < 100; i++) {
 
             let r = randomInt(0, 255);
@@ -165,20 +172,27 @@
 
             if (scoreNewPicture < scoreOldPicture) {
                 iteration--;
+                triangleSizeMin++;
+                triangleSizeMax++;
                 drawTriangle(contextDestination, p0, p1, p2, rgb);
                 imageDataDestination = contextDestination.getImageData(0, 0, width, height);
                 break;
+            }
+            if (i === 99) {
+                triangleSizeMin = Math.max(1, --triangleSizeMin);
+                triangleSizeMax = Math.max(1, --triangleSizeMax);
             }
         }
         setTimeout(function () {
             document.getElementById('iterationCount').innerText = iteration;
             if (iteration === 0) {
                 let duration = Date.now() - startingTime;
-                console.log(duration);
+                console.log("Total duration: " + duration + "ms");
                 return
             }
             draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration);
         }, 1);
+        console.log("triangle size: " + triangleSizeMax);
     }
 
     const canvasDestination = document.getElementById('destination');
@@ -197,8 +211,19 @@
             sourceImage.src = URL.createObjectURL(this.files[0]);
             sourceImage.onload = function () {
 
-                width = sourceImage.width;
-                height = sourceImage.height;
+                const sourceWidth = sourceImage.width;
+                const sourceHeight = sourceImage.height;
+
+                const maxWidth = 1000;
+                const maxHeight = 600;
+
+                if (maxWidth/maxHeight < sourceWidth / sourceHeight) {
+                    width = maxWidth;
+                    height = Math.round(sourceHeight * width / sourceWidth);
+                } else {
+                    height = maxHeight;
+                    width = Math.round(sourceWidth * height / sourceHeight);
+                }
 
                 document.getElementById('source').width = width;
                 document.getElementById('source').height = height;
@@ -213,7 +238,7 @@
                 contextSource.fillStyle = 'rgba(255,255,255,1)';
                 contextSource.fillRect(0, 0, width, height);
 
-                contextSource.drawImage(sourceImage, 0, 0);
+                contextSource.drawImage(sourceImage, 0, 0, width, height);
                 imageDataSource = contextSource.getImageData(0, 0, width, height);
                 const imageDataDestination = contextDestination.getImageData(0, 0, width, height);
 
@@ -224,11 +249,18 @@
         }
     });
 
+    document.getElementById('displayOriginalPicture').onchange = function () {
+        document.getElementById('source').style.display = this.checked ? 'block' : 'none';
+    }
+
     document.getElementById('addIterations').onclick = function () {
         const iteration = document.getElementById('iteration').value;
         const imageDataDestination = contextDestination.getImageData(0, 0, width, height);
         startingTime = Date.now();
         draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration);
+    };
+    document.getElementById('stopIterations').onclick = function () {
+        stopIteration = true;
     };
     document.getElementById('randomColor').onchange = function () {
         randomColor = this.checked;
