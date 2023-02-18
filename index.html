@@ -3,7 +3,10 @@
     <title>Trianglify</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1f1f1f">
-    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans&family=Source+Code+Pro:wght@500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans&family=Source+Code+Pro:wght@500&display=swap"
+          rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans&family=Source+Code+Pro:wght@500&display=swap');
 
@@ -68,9 +71,9 @@
         <button onclick="document.getElementById('imageInput').click();">Choose file</button>
         <p><label>Display original picture:</label><input id="displayOriginalPicture" type="checkbox"/></p>
         <p><label>Random color:</label><input id="randomColor" type="checkbox"/></p>
-        <p><label>Triangle size min:</label><input id="triangleSizeMin" type="number" value="200"/></p>
-        <p><label>Triangle size max:</label><input id="triangleSizeMax" type="number" value="200"/></p>
-        <p><label>Iteration number:</label><input type="number" id="iteration" value="1000" step="100"/></p>
+        <p><label>Triangle size min:</label><input id="triangleSizeMin" type="number" value="10" step="10"/></p>
+        <p><label>Triangle size max:</label><input id="triangleSizeMax" type="number" value="100" step="10"/></p>
+        <p><label>Iteration number:</label><input type="number" id="iteration" value="10000" step="100"/></p>
     </div>
     <div>
         <p>Remaining iteration: <span id="iterationCount">0</span></p>
@@ -91,8 +94,9 @@
     let startingTime;
     let stopIteration = false;
     let randomColor = false;
-    let triangleSizeMin = 5;
+    let triangleSizeMin = 10;
     let triangleSizeMax = 100;
+    let triangleCurrentSize = null;
 
     function pointInTriangle(p, p0, p1, p2) {
         const dX = p.x - p2.x;
@@ -149,11 +153,6 @@
         ctx.fill();
     }
 
-    function drawRandomPoint(ctx, minX, minY, maxX, maxY) {
-        ctx.fillStyle = 'rgba(' + randomInt(0, 255) + ',' + randomInt(0, 255) + ',' + randomInt(0, 255) + ',1)';
-        ctx.fillRect(randomInt(minX, maxX), randomInt(minY, maxY), 1, 1);
-    }
-
     function randomInt(min, max) {
         return Math.round(Math.random() * (max - min) + min);
     }
@@ -185,7 +184,7 @@
             y: Math.round(yCenter + distance * Math.sin(p2Angle))
         };
 
-        return [p0, p1, p2];
+        return {triangle: [p0, p1, p2], xCenter: xCenter, yCenter: yCenter};
     }
 
 
@@ -194,7 +193,8 @@
             stopIteration = false;
             return;
         }
-        for (let i = 0; i < 100; i++) {
+        const numberIterationBeforeGivingUp = 10;
+        for (let i = 1; i <= numberIterationBeforeGivingUp; i++) {
 
             let r = randomInt(0, 255);
             let g = randomInt(0, 255);
@@ -202,33 +202,17 @@
 
             let rgb = {r: r, g: g, b: b};
 
-            let p0 = {
-                x: randomInt(0 /*- Math.ceil(width / 10)*/, width /*+ Math.ceil(width / 10)*/),
-                y: randomInt(0 /*- Math.ceil(height / 10)*/, height /*+ Math.ceil(height / 10)*/)
-            };
-            let p1 = {
-                x: randomInt(0 /*- Math.ceil(width / 10)*/, width /*+ Math.ceil(width / 10)*/),
-                y: randomInt(0 /*- Math.ceil(height / 10)*/, height /*+ Math.ceil(height / 10)*/)
-            };
-            let p2 = {
-                x: randomInt(0 /*- Math.ceil(width / 10)*/, width /*+ Math.ceil(width / 10)*/),
-                y: randomInt(0 /*- Math.ceil(height / 10)*/, height /*+ Math.ceil(height / 10)*/)
-            };
-
-            let distance = random(triangleSizeMin, triangleSizeMax);
+            let distance = triangleCurrentSize;
             let randomTriangle = getRandomTriangle(width, height, distance);
-            p0 = randomTriangle[0];
-            p1 = randomTriangle[1];
-            p2 = randomTriangle[2];
+            let p0 = randomTriangle.triangle[0];
+            let p1 = randomTriangle.triangle[1];
+            let p2 = randomTriangle.triangle[2];
 
 
             if (randomColor === false) {
-                const xCenter = Math.round((p0.x + p1.x + p2.x) / 3);
-                const yCenter = Math.round((p0.y + p1.y + p2.y) / 3);
-
-                rgb.r = imageDataSource.data[yCenter * width * 4 + xCenter * 4];
-                rgb.g = imageDataSource.data[yCenter * width * 4 + xCenter * 4 + 1];
-                rgb.b = imageDataSource.data[yCenter * width * 4 + xCenter * 4 + 2];
+                rgb.r = imageDataSource.data[randomTriangle.yCenter * width * 4 + randomTriangle.xCenter * 4];
+                rgb.g = imageDataSource.data[randomTriangle.yCenter * width * 4 + randomTriangle.xCenter * 4 + 1];
+                rgb.b = imageDataSource.data[randomTriangle.yCenter * width * 4 + randomTriangle.xCenter * 4 + 2];
 
             }
 
@@ -237,15 +221,19 @@
 
             if (scoreNewPicture < scoreOldPicture) {
                 iteration--;
-                triangleSizeMin++;
-                triangleSizeMax++;
+                triangleCurrentSize++;
+                if (triangleCurrentSize > triangleSizeMax) {
+                    triangleCurrentSize = triangleSizeMax;
+                }
                 drawTriangle(contextDestination, p0, p1, p2, rgb);
                 imageDataDestination = contextDestination.getImageData(0, 0, width, height);
                 break;
             }
-            if (i === 99) {
-                triangleSizeMin = Math.max(1, --triangleSizeMin);
-                triangleSizeMax = Math.max(1, --triangleSizeMax);
+            if (i === numberIterationBeforeGivingUp) {
+                triangleCurrentSize--;
+                if (triangleCurrentSize < triangleSizeMin) {
+                    triangleCurrentSize = triangleSizeMin;
+                }
             }
         }
         setTimeout(function () {
@@ -257,7 +245,6 @@
             }
             draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration);
         }, 1);
-        console.log("triangle size: " + triangleSizeMax);
     }
 
     const canvasDestination = document.getElementById('destination');
@@ -271,6 +258,7 @@
     let imageDataSource;
 
     document.getElementById('imageInput').addEventListener('change', function () {
+        triangleCurrentSize = triangleSizeMax;
         if (this.files && this.files[0]) {
             const sourceImage = new Image();
             sourceImage.src = URL.createObjectURL(this.files[0]);
