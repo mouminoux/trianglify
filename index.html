@@ -68,9 +68,12 @@
 <div class="tools">
     <div>
         <input type="file" id="imageInput" style="display: none;"/>
-        <button onclick="document.getElementById('imageInput').click();">Choose file</button>
+        <button onclick="document.getElementById('imageInput').value = ''; document.getElementById('imageInput').click();">Choose file</button>
+        <p><label>Or paste image URL:</label><input id="imageUrl" type="text" placeholder="https://example.com/image.jpg" style="width: 20em;"/></p>
+        <p><button id="loadImageUrl">Load from URL</button></p>
         <p><label>Display original picture:</label><input id="displayOriginalPicture" type="checkbox"/></p>
         <p><label>Random color:</label><input id="randomColor" type="checkbox"/></p>
+        <p><label>Triangle opacity:</label><input id="triangleOpacity" type="number" value="100" min="0" max="100" step="10"/></p>
         <p><label>Triangle size min:</label><input id="triangleSizeMin" type="number" value="10" step="10"/></p>
         <p><label>Triangle size max:</label><input id="triangleSizeMax" type="number" value="100" step="10"/></p>
         <p><label>Iteration number:</label><input type="number" id="iteration" value="10000" step="100"/></p>
@@ -94,9 +97,11 @@
     let startingTime;
     let stopIteration = false;
     let randomColor = false;
+    let triangleOpacity = 1;
     let triangleSizeMin = 10;
     let triangleSizeMax = 100;
     let triangleCurrentSize = null;
+    let currentProcessingId = 0; // Track which image processing session is active
 
     function pointInTriangle(p, p0, p1, p2) {
         const dX = p.x - p2.x;
@@ -144,9 +149,9 @@
         return score;
     }
 
-    function drawTriangle(ctx, p0, p1, p2, rbg) {
+    function drawTriangle(ctx, p0, p1, p2, rbg, opacity) {
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(' + rbg.r + ',' + rbg.g + ',' + rbg.b + ',1)';
+        ctx.fillStyle = 'rgba(' + rbg.r + ',' + rbg.g + ',' + rbg.b + ',' + opacity + ')';
         ctx.moveTo(p0.x, p0.y);
         ctx.lineTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
@@ -188,7 +193,13 @@
     }
 
 
-    function draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration) {
+    function draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration, processingId) {
+        // Check if this is still the active processing session
+        if (processingId !== currentProcessingId) {
+            console.log('Stopping old iteration (new image loaded)');
+            return;
+        }
+        
         if (stopIteration) {
             stopIteration = false;
             return;
@@ -225,7 +236,7 @@
                 if (triangleCurrentSize > triangleSizeMax) {
                     triangleCurrentSize = triangleSizeMax;
                 }
-                drawTriangle(contextDestination, p0, p1, p2, rgb);
+                drawTriangle(contextDestination, p0, p1, p2, rgb, triangleOpacity);
                 imageDataDestination = contextDestination.getImageData(0, 0, width, height);
                 break;
             }
@@ -243,7 +254,7 @@
                 console.log("Total duration: " + duration + "ms");
                 return
             }
-            draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration);
+            draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration, processingId);
         }, 1);
     }
 
@@ -257,44 +268,132 @@
     let height;
     let imageDataSource;
 
-    document.getElementById('imageInput').addEventListener('change', function () {
+    function processImage(sourceImage) {
+        // Create a new processing ID to identify this session
+        currentProcessingId++;
+        const thisProcessingId = currentProcessingId;
+        
+        stopIteration = true; // Stop any ongoing iterations
         triangleCurrentSize = triangleSizeMax;
+
+        function doProcessing() {
+            const sourceWidth = sourceImage.width;
+            const sourceHeight = sourceImage.height;
+
+            const maxWidth = 1000;
+            const maxHeight = 600;
+
+            if (maxWidth / maxHeight < sourceWidth / sourceHeight) {
+                width = maxWidth;
+                height = Math.round(sourceHeight * width / sourceWidth);
+            } else {
+                height = maxHeight;
+                width = Math.round(sourceWidth * height / sourceHeight);
+            }
+
+            document.getElementById('source').width = width;
+            document.getElementById('source').height = height;
+            document.getElementById('destination').width = width;
+            document.getElementById('destination').height = height;
+
+            contextDestination.imageSmoothingEnabled = false;
+            contextSource.imageSmoothingEnabled = false;
+
+            // Clear the destination canvas
+            contextDestination.clearRect(0, 0, width, height);
+
+            contextSource.drawImage(sourceImage, 0, 0, width, height);
+            imageDataSource = contextSource.getImageData(0, 0, width, height);
+            const imageDataDestination = contextDestination.getImageData(0, 0, width, height);
+
+            const iteration = document.getElementById('iteration').value;
+            startingTime = Date.now();
+            stopIteration = false; // Reset flag before starting new draw
+            draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration, thisProcessingId);
+        }
+
+        // Check if image is already loaded
+        if (sourceImage.complete && sourceImage.naturalWidth > 0) {
+            doProcessing();
+        } else {
+            sourceImage.onload = function () {
+                doProcessing();
+            };
+
+            sourceImage.onerror = function () {
+                alert('Failed to load image. Please check the file or URL and try again.');
+            };
+        }
+    }
+
+    document.getElementById('imageInput').addEventListener('change', function () {
         if (this.files && this.files[0]) {
             const sourceImage = new Image();
             sourceImage.src = URL.createObjectURL(this.files[0]);
-            sourceImage.onload = function () {
+            processImage(sourceImage);
+        }
+    });
 
-                const sourceWidth = sourceImage.width;
-                const sourceHeight = sourceImage.height;
-
-                const maxWidth = 1000;
-                const maxHeight = 600;
-
-                if (maxWidth / maxHeight < sourceWidth / sourceHeight) {
-                    width = maxWidth;
-                    height = Math.round(sourceHeight * width / sourceWidth);
-                } else {
-                    height = maxHeight;
-                    width = Math.round(sourceWidth * height / sourceHeight);
-                }
-
-                document.getElementById('source').width = width;
-                document.getElementById('source').height = height;
-                document.getElementById('destination').width = width;
-                document.getElementById('destination').height = height;
-
-                contextDestination.imageSmoothingEnabled = false;
-
-                contextSource.imageSmoothingEnabled = false;
-
-                contextSource.drawImage(sourceImage, 0, 0, width, height);
-                imageDataSource = contextSource.getImageData(0, 0, width, height);
-                const imageDataDestination = contextDestination.getImageData(0, 0, width, height);
-
-                const iteration = document.getElementById('iteration').value;
-                startingTime = Date.now();
-                draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration);
+    function loadImageWithCorsProxy(imageUrl) {
+        console.log('Attempting to load image:', imageUrl);
+        
+        // List of proxy services to try
+        const proxies = [
+            { name: 'Direct', url: imageUrl },
+            { name: 'cors.sh', url: 'https://cors.sh/' + imageUrl },
+            { name: 'corsproxy.io', url: 'https://corsproxy.io/?' + encodeURIComponent(imageUrl) },
+            { name: 'api.allorigins.win', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(imageUrl) },
+            { name: 'api.codetabs.com', url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(imageUrl) }
+        ];
+        
+        let currentProxyIndex = 0;
+        
+        function tryNextProxy() {
+            if (currentProxyIndex >= proxies.length) {
+                alert('Failed to load image after trying all available methods:\n\n' + 
+                      proxies.map((p, i) => (i + 1) + '. ' + p.name).join('\n') + 
+                      '\n\nThe image URL may be invalid or blocked.');
+                return;
+            }
+            
+            const proxy = proxies[currentProxyIndex];
+            console.log(`Trying ${proxy.name}...`);
+            
+            const img = new Image();
+            
+            // IMPORTANT: Always set crossOrigin to prevent canvas tainting
+            // This allows us to use getImageData() on the canvas
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = function () {
+                console.log(`✓ Image loaded successfully via ${proxy.name}`);
+                processImage(img);
             };
+            
+            img.onerror = function () {
+                console.log(`✗ Failed to load via ${proxy.name}`);
+                currentProxyIndex++;
+                tryNextProxy();
+            };
+            
+            img.src = proxy.url;
+        }
+        
+        tryNextProxy();
+    }
+
+    document.getElementById('loadImageUrl').addEventListener('click', function () {
+        const imageUrl = document.getElementById('imageUrl').value.trim();
+        if (imageUrl) {
+            loadImageWithCorsProxy(imageUrl);
+        } else {
+            alert('Please enter a valid image URL.');
+        }
+    });
+
+    document.getElementById('imageUrl').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            document.getElementById('loadImageUrl').click();
         }
     });
 
@@ -306,13 +405,16 @@
         const iteration = document.getElementById('iteration').value;
         const imageDataDestination = contextDestination.getImageData(0, 0, width, height);
         startingTime = Date.now();
-        draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration);
+        draw(imageDataSource, imageDataDestination, contextDestination, width, height, iteration, currentProcessingId);
     };
     document.getElementById('stopIterations').onclick = function () {
         stopIteration = true;
     };
     document.getElementById('randomColor').onchange = function () {
         randomColor = this.checked;
+    }
+    document.getElementById('triangleOpacity').onchange = function () {
+        triangleOpacity = parseFloat(this.value) / 100;
     }
     document.getElementById('triangleSizeMin').onchange = function () {
         triangleSizeMin = this.value;
