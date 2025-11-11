@@ -69,8 +69,7 @@
     <div>
         <input type="file" id="imageInput" style="display: none;"/>
         <button onclick="document.getElementById('imageInput').value = ''; document.getElementById('imageInput').click();">Choose file</button>
-        <p><label>Or paste image URL:</label><input id="imageUrl" type="text" placeholder="https://example.com/image.jpg" style="width: 20em;"/></p>
-        <p><button id="loadImageUrl">Load from URL</button></p>
+        <p><label>Or paste image URL:</label><input id="imageUrl" type="text" placeholder="https://example.com/image.jpg" style="width: 12em;" onclick="this.value = '';"/> <button id="loadImageUrl">Load</button></p>
         <p><label>Display original picture:</label><input id="displayOriginalPicture" type="checkbox"/></p>
         <p><label>Random color:</label><input id="randomColor" type="checkbox"/></p>
         <p><label>Triangle opacity:</label><input id="triangleOpacity" type="number" value="100" min="0" max="100" step="10"/></p>
