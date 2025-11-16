@@ -45,23 +45,17 @@ func DrawPolygon(img *gg.Context, points []image.Point, color imgColor.RGBA) {
 	img.Fill()
 }
 
-func Score(src *gg.Context, dst *gg.Context, triangle [3]image.Point) int64 {
+func Score(src *gg.Context, dst *gg.Context, shapeBound func() image.Rectangle, pointInShape func(point image.Point) bool) int64 {
 	srcImg := src.Image()
 	dstImg := dst.Image()
 
-	bounds := srcImg.Bounds()
-
-	minX := int(math.Max(float64(bounds.Min.X), math.Min(math.Min(float64(triangle[0].X), float64(triangle[1].X)), float64(triangle[2].X))))
-	maxX := int(math.Min(float64(bounds.Max.X), math.Max(math.Max(float64(triangle[0].X), float64(triangle[1].X)), float64(triangle[2].X))))
-
-	minY := int(math.Max(float64(bounds.Min.Y), math.Min(math.Min(float64(triangle[0].Y), float64(triangle[1].Y)), float64(triangle[2].Y))))
-	maxY := int(math.Min(float64(bounds.Max.Y), math.Max(math.Max(float64(triangle[0].Y), float64(triangle[1].Y)), float64(triangle[2].Y))))
+	bound := shapeBound()
 
 	var score int64 = 0
 
-	for x := minX; x <= maxX; x++ {
-		for y := minY; y <= maxY; y++ {
-			if pointInTriangle(image.Point{x, y}, triangle) {
+	for x := bound.Min.X; x <= bound.Max.X; x++ {
+		for y := bound.Min.Y; y <= bound.Max.Y; y++ {
+			if pointInShape(image.Point{X: x, Y: y}) {
 				r, g, b, _ := srcImg.At(x, y).RGBA()
 				r &= r >> 8
 				g &= g >> 8
@@ -83,7 +77,21 @@ func Score(src *gg.Context, dst *gg.Context, triangle [3]image.Point) int64 {
 	return score
 }
 
-func pointInTriangle(p image.Point, triangle [3]image.Point) bool {
+func TriangleBound(bounds image.Rectangle, triangle [3]image.Point) image.Rectangle {
+	minX := int(math.Max(float64(bounds.Min.X), math.Min(math.Min(float64(triangle[0].X), float64(triangle[1].X)), float64(triangle[2].X))))
+	maxX := int(math.Min(float64(bounds.Max.X), math.Max(math.Max(float64(triangle[0].X), float64(triangle[1].X)), float64(triangle[2].X))))
+
+	minY := int(math.Max(float64(bounds.Min.Y), math.Min(math.Min(float64(triangle[0].Y), float64(triangle[1].Y)), float64(triangle[2].Y))))
+	maxY := int(math.Min(float64(bounds.Max.Y), math.Max(math.Max(float64(triangle[0].Y), float64(triangle[1].Y)), float64(triangle[2].Y))))
+
+	shapeBound := image.Rectangle{
+		Min: image.Point{X: minX, Y: minY},
+		Max: image.Point{X: maxX, Y: maxY},
+	}
+	return shapeBound
+}
+
+func PointInTriangle(p image.Point, triangle [3]image.Point) bool {
 	p0 := triangle[0]
 	p1 := triangle[1]
 	p2 := triangle[2]

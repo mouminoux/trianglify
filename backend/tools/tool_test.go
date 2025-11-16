@@ -19,9 +19,9 @@ import (
 //		Y: 400,
 //	}
 //
-//	require.False(t, pointInTriangle(image.Point{0, 0}, p0, p1, p2))
-//	require.True(t, pointInTriangle(image.Point{100, 100}, p0, p1, p2))
-//	require.False(t, pointInTriangle(image.Point{300, 300}, p0, p1, p2))
+//	require.False(t, PointInTriangle(image.Point{0, 0}, p0, p1, p2))
+//	require.True(t, PointInTriangle(image.Point{100, 100}, p0, p1, p2))
+//	require.False(t, PointInTriangle(image.Point{300, 300}, p0, p1, p2))
 //
 //	r := uint32(255)
 //	fmt.Println(r)
